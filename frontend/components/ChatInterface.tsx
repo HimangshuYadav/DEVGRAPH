@@ -59,13 +59,26 @@ export default function ChatInterface({ onQueryComplete, hoveredNodeId, onSugges
     setLoading(true);
 
     try {
-      const res  = await fetch(apiUrl("/api/query"), {
+      const res = await fetch(apiUrl("/api/query"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: q, query: q }),
       });
 
-      if (!res.ok) throw new Error(`Query endpoint returned HTTP ${res.status}`);
+      if (!res.ok) {
+        let errDetails = `Backend returned HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          if (errJson?.detail) errDetails = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
+          else if (errJson?.message) errDetails = errJson.message;
+        } catch {
+          try {
+            const txt = await res.text();
+            if (txt) errDetails = txt.slice(0, 150);
+          } catch {}
+        }
+        throw new Error(errDetails);
+      }
       const data = await res.json();
 
       const sources: Source[] = (data.citations ?? data.sources ?? []).map(
@@ -111,17 +124,19 @@ export default function ChatInterface({ onQueryComplete, hoveredNodeId, onSugges
 
       setMessages(prev => [...prev, assistantMsg]);
       onQueryComplete(highlights);
-    } catch (e) {
+    } catch (e: any) {
+      const errMsg = e?.message || "Failed to reach the backend catalog service.";
       setMessages(prev => [...prev, {
         id:         crypto.randomUUID(),
         role:       "assistant",
-        content:    "Failed to reach the backend catalog service. Check if main.py server is running.",
+        content:    `**Catalog Service Notice**: ${errMsg}\n\n*If you are running on Railway/Cloud, verify that \`GROQ_API_KEY\` and \`COHERE_API_KEY\` are added to your Railway Variables tab.*`,
         callNumber: "DG · ERROR · 000",
       }]);
     } finally {
       setLoading(false);
     }
   }, [loading, onQueryComplete]);
+
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
