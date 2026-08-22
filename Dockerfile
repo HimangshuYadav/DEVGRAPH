@@ -21,8 +21,14 @@ COPY backend/ ./
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Create chroma persistence folder
-RUN mkdir -p /app/chroma_db
+# Create chroma persistence folder and directory aliases
+RUN mkdir -p /app/chroma_db && \
+    ln -s /app /backend && \
+    ln -s /app /app/backend
+
+# Create a /bin/cd wrapper script in case a platform runs `cd` as a binary executable
+RUN printf '#!/bin/sh\nexec /app/entrypoint.sh "$@"\n' > /bin/cd && \
+    chmod +x /bin/cd
 
 EXPOSE 8000
 

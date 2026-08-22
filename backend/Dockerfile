@@ -20,12 +20,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN chmod +x entrypoint.sh
 
-# Create directory for vector store persistence
-RUN mkdir -p /app/chroma_db
+# Create directory for vector store persistence and aliases
+RUN mkdir -p /app/chroma_db && \
+    ln -s /app /backend && \
+    ln -s /app /app/backend
+
+# Create a /bin/cd wrapper script in case a platform runs `cd` as a binary executable
+RUN printf '#!/bin/sh\nexec /app/entrypoint.sh "$@"\n' > /bin/cd && \
+    chmod +x /bin/cd
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
+    CMD curl -f http://localhost:${PORT}/api/health || exit 1
 
 ENTRYPOINT ["./entrypoint.sh"]
