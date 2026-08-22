@@ -6,12 +6,16 @@ export function apiUrl(path: string): string {
     return cleanPath;
   }
 
+  // If running on HTTPS in production, prevent browser mixed-content blocks against http://localhost
+  if (typeof window !== "undefined" && window.location.protocol === "https:" && rawBase.startsWith("http://localhost")) {
+    return cleanPath;
+  }
+
   let base = rawBase.replace(/\/+$/, "");
   if (!base.startsWith("http://") && !base.startsWith("https://")) {
     base = `https://${base}`;
   }
 
-  // If deployed on Vercel or custom domain with an external backend URL
   return `${base}${cleanPath}`;
 }
 

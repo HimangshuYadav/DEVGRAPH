@@ -73,11 +73,12 @@ function initialConnections(): StringConn[] {
 
 export default function KnowledgeGraph({ highlightIds, onNodeHover }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [cards, setCards] = useState<MiniCard[]>([]);
+  const [cards, setCards] = useState<MiniCard[]>(() => initialCards(350, 420));
   const [connections, setConnections] = useState<StringConn[]>(initialConnections());
   const [graphData, setGraphData] = useState<any>(null);
   const [selectedCard, setSelectedCard] = useState<MiniCard | null>(null);
   const [activePinId, setActivePinId] = useState<string | null>(null);
+
 
   // Helper to test if a card matches query highlights
   const isCardHighlighted = useCallback((cardId: string, fullUrl?: string, title?: string) => {
@@ -282,10 +283,15 @@ export default function KnowledgeGraph({ highlightIds, onNodeHover }: Props) {
         if (data?.nodes?.length) {
           setGraphData(data);
           rebuildBoard(data, highlightIds);
+        } else {
+          rebuildBoard(null, highlightIds);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        rebuildBoard(null, highlightIds);
+      });
   }, [rebuildBoard, highlightIds]);
+
 
 
   useEffect(() => {
