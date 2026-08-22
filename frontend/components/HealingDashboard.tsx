@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiUrl } from "@/lib/api";
 
 interface HealthData {
   pages_indexed:   number;
@@ -43,7 +44,7 @@ export default function HealingDashboard() {
   const [healResult, setHealResult]   = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/health")
+    fetch(apiUrl("/api/health"))
       .then(r => r.ok ? r.json() : null)
       .then(d => d && setHealth(d))
       .catch(() => {});
@@ -54,14 +55,14 @@ export default function HealingDashboard() {
     setHealing(true);
     setHealResult(null);
     try {
-      const res = await fetch("/api/health/heal", {
+      const res = await fetch(apiUrl("/api/health/heal"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ collector_id: collectorId, description: repairDesc }),
       });
       const data = res.ok ? await res.json() : {};
       setHealResult(data.message ?? "Repair record logged.");
-      const h = await fetch("/api/health").then(r => r.ok ? r.json() : null);
+      const h = await fetch(apiUrl("/api/health")).then(r => r.ok ? r.json() : null);
       if (h) setHealth(h);
     } catch {
       setHealResult("Failed to reach mending service.");

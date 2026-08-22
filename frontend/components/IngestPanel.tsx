@@ -2,6 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { IngestStats } from "@/app/page";
+import { apiUrl } from "@/lib/api";
+
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -66,8 +68,9 @@ function CatalogBrowser({ onRefile }: { onRefile: (url: string) => void }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/sources");
+      const res = await fetch(apiUrl("/api/sources"));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const data: DocSource[] = await res.json();
       setSources(data);
     } catch (e) {
@@ -231,11 +234,12 @@ export default function IngestPanel({
       markStep(0);
 
       markStep(1);
-      const res = await fetch("/api/scrape", {
+      const res = await fetch(apiUrl("/api/scrape"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, max_pages: depth }),
       });
+
       if (!res.ok) throw new Error(`Scrape endpoint returned HTTP ${res.status}`);
       const data = await res.json();
 

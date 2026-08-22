@@ -1,4 +1,21 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export function apiUrl(path: string): string {
+  const rawBase = (process.env.NEXT_PUBLIC_API_URL || "").trim();
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  if (!rawBase || rawBase === "undefined" || rawBase === "null") {
+    return cleanPath;
+  }
+
+  let base = rawBase.replace(/\/+$/, "");
+  if (!base.startsWith("http://") && !base.startsWith("https://")) {
+    base = `https://${base}`;
+  }
+
+  // If deployed on Vercel or custom domain with an external backend URL
+  return `${base}${cleanPath}`;
+}
+
+const API = apiUrl("");
 
 export type Citation = {
   url: string;
@@ -11,6 +28,8 @@ export type QueryResponse = {
   answer: string;
   citations: Citation[];
   graph_highlight: string[];
+  knowledge_gap?: boolean;
+  suggested_url?: string | null;
 };
 
 export type ScrapeJob = {
@@ -69,7 +88,7 @@ export type RunEvent = {
 // ── API calls ─────────────────────────────────────────────────
 
 export async function startScrape(url: string, maxPages = 20): Promise<{ job_id: string }> {
-  const r = await fetch(`${API}/api/scrape`, {
+  const r = await fetch(apiUrl("/api/scrape"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url, max_pages: maxPages }),
@@ -79,29 +98,29 @@ export async function startScrape(url: string, maxPages = 20): Promise<{ job_id:
 }
 
 export async function getScrapeStatus(jobId: string): Promise<ScrapeJob> {
-  const r = await fetch(`${API}/api/scrape/${jobId}`);
+  const r = await fetch(apiUrl(`/api/scrape/${jobId}`));
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
 export async function queryDocs(question: string): Promise<QueryResponse> {
-  const r = await fetch(`${API}/api/query`, {
+  const r = await fetch(apiUrl("/api/query"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, query: question }),
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
 export async function getGraph(): Promise<GraphData> {
-  const r = await fetch(`${API}/api/graph/raw`);
+  const r = await fetch(apiUrl("/api/graph/raw"));
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
 export async function getHealth(): Promise<HealthData> {
-  const r = await fetch(`${API}/api/health`);
+  const r = await fetch(apiUrl("/api/health"));
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -109,8 +128,8 @@ export async function getHealth(): Promise<HealthData> {
 export async function triggerHeal(
   collectorId: string,
   description: string
-): Promise<{ ok: boolean }> {
-  const r = await fetch(`${API}/api/health/heal`, {
+): Promise<{ ok: boolean; heals_applied: number }> {
+  const r = await fetch(apiUrl("/api/health/heal"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ collector_id: collectorId, description }),

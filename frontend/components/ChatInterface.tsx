@@ -3,7 +3,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 
+import { apiUrl } from "@/lib/api";
+
 interface Message {
+
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -56,11 +59,12 @@ export default function ChatInterface({ onQueryComplete, hoveredNodeId, onSugges
     setLoading(true);
 
     try {
-      const res  = await fetch("/api/query", {
+      const res  = await fetch(apiUrl("/api/query"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: q, query: q }),
       });
+
       if (!res.ok) throw new Error(`Query endpoint returned HTTP ${res.status}`);
       const data = await res.json();
 

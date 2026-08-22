@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion } from "framer-motion";
+import { apiUrl } from "@/lib/api";
+
 
 interface MiniCard {
   id: string;
@@ -274,7 +276,7 @@ export default function KnowledgeGraph({ highlightIds, onNodeHover }: Props) {
 
   // Fetch graph JSON on initial mount
   const loadGraph = useCallback(() => {
-    fetch("/api/graph/raw")
+    fetch(apiUrl("/api/graph/raw"))
       .then(r => (r.ok ? r.json() : null))
       .then(data => {
         if (data?.nodes?.length) {
@@ -284,6 +286,7 @@ export default function KnowledgeGraph({ highlightIds, onNodeHover }: Props) {
       })
       .catch(() => {});
   }, [rebuildBoard, highlightIds]);
+
 
   useEffect(() => {
     loadGraph();
