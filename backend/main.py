@@ -40,18 +40,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-cors_origins_raw = os.getenv("CORS_ORIGIN", "http://localhost:3000,*")
-cors_origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
-if "*" not in cors_origins:
-    cors_origins.append("*")
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 app.include_router(scrape_router,  prefix="/api/scrape",   tags=["Scraping"])
