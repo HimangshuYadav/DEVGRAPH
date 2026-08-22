@@ -1,0 +1,45 @@
+services:
+  # FastAPI Backend Service
+  - type: web
+    name: devgraph-backend
+    runtime: python
+    buildCommand: "cd backend && pip install -r requirements.txt"
+    startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: BRIGHTDATA_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: COHERE_EMBED_MODEL
+        value: embed-english-v3.0
+      - key: CHROMA_DB_PATH
+        value: /var/data/chroma_db
+      - key: GRAPH_PATH
+        value: /var/data/graph.json
+      - key: CORS_ORIGIN
+        value: "*"
+    disk:
+      name: devgraph-data
+      mountPath: /var/data
+      sizeGB: 5
+
+  # Next.js Frontend Service
+  - type: web
+    name: devgraph-frontend
+    runtime: node
+    buildCommand: "cd frontend && npm install && npm run build"
+    startCommand: "cd frontend && npm run start"
+    envVars:
+      - key: NODE_VERSION
+        value: 20.12.0
+      - key: BACKEND_URL
+        fromService:
+          type: web
+          name: devgraph-backend
+          property: host

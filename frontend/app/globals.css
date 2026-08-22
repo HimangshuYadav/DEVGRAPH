@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+/* ── Card Catalog Design Tokens ── */
+@theme inline {
+  /* Palette */
+  --color-walnut:    #2A1F1A;
+  --color-oak:       #4A3527;
+  --color-card-cream:#EFE3C8;
+  --color-rule-red:  #B14A3D;
+  --color-brass:     #B08D57;
+  --color-stamp-teal:#3F6E64;
+  --color-ink:       #241B14;
+
+  /* Surfaces & Defaults */
+  --color-background: var(--color-walnut);
+  --color-foreground: rgba(239,227,200,0.9);
+  --color-panel:      var(--color-oak);
+  --color-border:     rgba(176,141,87,0.25);
+
+  /* Typography */
+  --font-typewriter: var(--font-special-elite), "Courier New", monospace;
+  --font-serif:      var(--font-source-serif), Georgia, serif;
+  --font-mono:       var(--font-plex-mono), monospace;
+}
+
+/* ── Base Reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background-color: #2A1F1A;
+  color: rgba(239,227,200,0.9);
+  font-family: var(--font-source-serif), Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Typography Classes ── */
+.font-typewriter {
+  font-family: var(--font-special-elite), "Courier New", monospace;
+}
+
+.font-card-body {
+  font-family: var(--font-source-serif), Georgia, serif;
+}
+
+.font-code-mono {
+  font-family: var(--font-plex-mono), monospace;
+}
+
+/* ── Card Stock Component Styling ── */
+.card-stock {
+  background-color: #EFE3C8;
+  color: #241B14;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(74, 53, 39, 0.15);
+}
+
+/* Red Horizontal Ruling Lines on Cards */
+.card-ruled {
+  background-color: #EFE3C8;
+  background-image: linear-gradient(to bottom, transparent 27px, rgba(177, 74, 61, 0.25) 28px);
+  background-size: 100% 28px;
+}
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: #2A1F1A; }
+::-webkit-scrollbar-thumb  { background: #4A3527; border: 1px solid #B08D57; }
+::-webkit-scrollbar-thumb:hover { background: #B08D57; }
+
+/* ── Brass Focus Rings ── */
+:focus-visible {
+  outline: 2px solid #B08D57;
+  outline-offset: 2px;
+}
+
+/* ── Text Selection ── */
+::selection {
+  background: rgba(176, 141, 87, 0.3);
+  color: #EFE3C8;
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
