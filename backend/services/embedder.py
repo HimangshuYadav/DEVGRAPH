@@ -13,11 +13,15 @@ MODEL = os.getenv("COHERE_EMBED_MODEL", "embed-english-v3.0")
 BATCH_SIZE = 96  # Cohere max
 
 
+_cohere_disabled_until: float = 0.0
+
+
 def _get_client() -> cohere.Client:
     global _client
     if _client is None:
         api_key = os.getenv("COHERE_API_KEY", "")
-        _client = cohere.Client(api_key)
+        # Set 1.0s timeout on httpx client inside Cohere SDK
+        _client = cohere.Client(api_key, timeout=1.0)
     return _client
 
 
@@ -36,10 +40,14 @@ def embed_texts(texts: list[str], input_type: str = "search_document") -> list[l
     """
     Embed a list of texts using Cohere.
     If Cohere hits rate limit or fails, falls back immediately to local deterministic vectors.
-    Returns list of 1024-dim float vectors.
     """
+    global _cohere_disabled_until
     if not texts:
         return []
+
+    import time
+    if time.time() < _cohere_disabled_until:
+        return [_fallback_embed_single(t) for t in texts]
 
     client = _get_client()
     all_embeddings: list[list[float]] = []
@@ -55,16 +63,51 @@ def embed_texts(texts: list[str], input_type: str = "search_document") -> list[l
             )
             all_embeddings.extend(response.embeddings.float)
         except Exception as exc:
-            print(f"[Cohere] embed_texts failed ({exc}) -> generating instant local vectors")
+            print(f"[Cohere] embed_texts failed ({exc}) -> disabling Cohere for 300s & using local vectors")
+            _cohere_disabled_until = time.time() + 300.0
             for text in batch:
                 all_embeddings.append(_fallback_embed_single(text))
 
     return all_embeddings
 
 
-def embed_query(query: str) -> list[float]:
-    """Embed a single query string without blocking retries."""
+async def embed_query_async(query: str) -> list[float]:
+    """Non-blocking query embedding with 0.8s hard timeout and 300s circuit breaker."""
+    global _cohere_disabled_until
     if not query:
+        return []
+
+    import time
+    if time.time() < _cohere_disabled_until:
+        return []
+
+    import asyncio
+    try:
+        client = _get_client()
+        response = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.embed,
+                texts=[query],
+                model=MODEL,
+                input_type="search_query",
+                embedding_types=["float"],
+            ),
+            timeout=0.8,
+        )
+        return response.embeddings.float[0]
+    except Exception as exc:
+        print(f"[Cohere] embed_query failed/timed-out ({type(exc).__name__}) -> disabling for 300s & using keyword search")
+        _cohere_disabled_until = time.time() + 300.0
+        return []
+
+
+def embed_query(query: str) -> list[float]:
+    """Sync fallback."""
+    global _cohere_disabled_until
+    if not query:
+        return []
+    import time
+    if time.time() < _cohere_disabled_until:
         return []
     try:
         client = _get_client()
@@ -76,8 +119,9 @@ def embed_query(query: str) -> list[float]:
         )
         return response.embeddings.float[0]
     except Exception as exc:
-        print(f"[Cohere] embed_query rate-limited/failed ({exc}) -> instant keyword fallback")
+        _cohere_disabled_until = time.time() + 300.0
         return []
+
 
 
 

@@ -8,7 +8,7 @@ import re
 
 from groq import Groq
 
-from services.embedder      import embed_query
+from services.embedder      import embed_query_async, embed_query
 from services.vector_store  import query_similar, query_by_keywords, list_sources
 from services.knowledge_graph import get_relevant_node_ids
 
@@ -60,7 +60,8 @@ async def answer_question(question: str, n_results: int = 8) -> dict:
     """
 
     # 1. Embed query & retrieve chunks
-    q_embedding = embed_query(question)
+    q_embedding = await embed_query_async(question)
+
     chunks = []
     if q_embedding:
         chunks = query_similar(q_embedding, n_results=n_results)
