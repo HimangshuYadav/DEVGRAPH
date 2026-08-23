@@ -19,8 +19,12 @@ MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 def _get_groq() -> Groq:
     global _groq
     if _groq is None:
-        _groq = Groq(api_key=os.getenv("GROQ_API_KEY", ""))
+        from dotenv import load_dotenv
+        load_dotenv()
+        api_key = os.getenv("GROQ_API_KEY", "")
+        _groq = Groq(api_key=api_key)
     return _groq
+
 
 
 SYSTEM_PROMPT = """You are DevGraph AI, an expert assistant that answers questions about developer documentation.
@@ -49,13 +53,34 @@ def build_context(chunks: list[dict]) -> str:
     return "\n".join(parts)
 
 
+FALLBACK_MODELS = ["openai/gpt-oss-20b", "qwen/qwen3.6-27b"]
+
+
+def _call_groq_with_fallback(groq_client: Groq, messages: list[dict], temperature: float = 0.1, max_tokens: int = 800) -> str:
+    """Try models sequentially to bypass single-model token limits on free tier."""
+    for model in FALLBACK_MODELS:
+        try:
+            completion = groq_client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            content = completion.choices[0].message.content or ""
+            if content.strip():
+                return content
+        except Exception as exc:
+            print(f"[Groq Fallback] Model {model} failed ({exc}) -> trying next model")
+    return ""
+
+
 async def answer_question(question: str, n_results: int = 8) -> dict:
     """
     Full RAG pipeline:
     1. Embed question via Cohere (or instant keyword fallback)
     2. Retrieve top-k chunks from ChromaDB
     3. Build prompt with context
-    4. Get Groq completion
+    4. Get Groq completion (with multi-model fallback)
     5. Return answer + citations + graph highlights
     """
 
@@ -89,26 +114,28 @@ async def answer_question(question: str, n_results: int = 8) -> dict:
     context = build_context(chunks)
     user_message = f"Documentation excerpts:\n\n{context}\n\nQuestion: {question}"
 
-    # 4. Groq completion (with robust error fallback for Railway)
-    answer = ""
-    try:
-        groq_client = _get_groq()
-        completion = groq_client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": user_message},
-            ],
-            temperature=0.1,
-            max_tokens=800,
-        )
-        answer = completion.choices[0].message.content or ""
-    except Exception as exc:
-        print(f"[Groq] Completion error ({exc}) -> generating direct context response")
+    # 4. Groq completion (with multi-model fallback & non-blocking async thread)
+    groq_client = _get_groq()
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": user_message},
+    ]
+    import asyncio
+    answer = await asyncio.to_thread(
+        _call_groq_with_fallback,
+        groq_client,
+        messages,
+        temperature=0.1,
+        max_tokens=800,
+    )
+
+
+    if not answer:
         excerpts_formatted = []
         for c in chunks[:3]:
             excerpts_formatted.append(f"#### [{c['heading']}]({c['page_url']})\n{c['text']}")
         answer = "### Documentation Excerpts\n\n" + "\n\n".join(excerpts_formatted)
+
 
 
     # Robustly strip any reasoning/thinking blocks
