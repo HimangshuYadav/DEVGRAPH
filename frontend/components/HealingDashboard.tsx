@@ -20,15 +20,15 @@ const CIRCULATION_RECORDS = [
 
 function RubberStamp({ pct }: { pct: number }) {
   return (
-    <div className="relative w-24 h-24 flex items-center justify-center border-4 border-[#3F6E64] rounded-full p-2 text-center rotate-[-6deg] opacity-90 shadow-sm bg-[#EFE3C8]">
-      <div className="border border-dashed border-[#3F6E64] rounded-full w-full h-full flex flex-col items-center justify-center p-1">
-        <span className="font-typewriter text-[9px] text-[#3F6E64] font-bold tracking-widest uppercase">
+    <div className="relative w-20 h-20 flex-shrink-0 flex items-center justify-center border-2 border-[#3F6E64] rounded-full p-1 text-center rotate-[-5deg] opacity-95 shadow-sm bg-[#EFE3C8]">
+      <div className="border border-dashed border-[#3F6E64] rounded-full w-full h-full flex flex-col items-center justify-center">
+        <span className="font-typewriter text-[8px] text-[#3F6E64] font-bold tracking-wider uppercase leading-none">
           VERIFIED
         </span>
-        <span className="font-typewriter text-xl font-bold text-[#3F6E64]">
+        <span className="font-typewriter text-base font-bold text-[#3F6E64] my-0.5">
           {pct}%
         </span>
-        <span className="font-typewriter text-[8px] text-[#3F6E64] tracking-widest uppercase">
+        <span className="font-typewriter text-[7px] text-[#3F6E64] tracking-widest uppercase leading-none">
           INTEGRITY
         </span>
       </div>
@@ -88,14 +88,14 @@ export default function HealingDashboard() {
       </div>
 
       {/* ── Card Mid-Repair with Tape Graphic & Rubber Stamp ── */}
-      <div className="card-stock card-ruled p-4 border border-[#4A3527]/40 rounded-sm shadow-lg relative space-y-3 overflow-hidden">
+      <div className="card-stock card-ruled p-3.5 border border-[#4A3527]/40 rounded-sm shadow-lg relative space-y-2.5">
         {/* Tape Graphic across tear */}
-        <div className="absolute -top-1 left-12 w-20 h-6 bg-[#D8C7A4]/80 border-t border-b border-[#B08D57]/40 rotate-[-12deg] shadow-sm pointer-events-none" />
+        <div className="absolute -top-1 left-8 w-16 h-5 bg-[#D8C7A4]/80 border-t border-b border-[#B08D57]/40 rotate-[-10deg] shadow-sm pointer-events-none" />
 
         {/* Card Header & Stamp */}
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="font-typewriter text-xs font-bold text-[#241B14] uppercase">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <span className="font-typewriter text-xs font-bold text-[#241B14] uppercase truncate block">
               MENDING CARD #47
             </span>
             <p className="font-typewriter text-[9px] text-[#B14A3D] font-bold mt-0.5">
@@ -106,10 +106,11 @@ export default function HealingDashboard() {
         </div>
 
         {/* Card Note */}
-        <p className="font-card-body text-xs text-[#241B14] leading-relaxed">
-          Index card filed under <code className="font-code-mono bg-[#4A3527]/10 px-1">fastapi.tiangolo.com</code> was patched. All 47 vector embeddings verified intact.
+        <p className="font-card-body text-[11px] text-[#241B14] leading-relaxed">
+          Index card filed under <code className="font-code-mono bg-[#4A3527]/10 px-1 py-0.5 rounded-xs">fastapi.tiangolo.com</code> was patched. All 47 vector embeddings verified intact.
         </p>
       </div>
+
 
       {/* ── Repair Intake Form ── */}
       <div className="border border-[#B08D57]/30 bg-[#35251B] p-3 space-y-2.5 rounded-sm">
