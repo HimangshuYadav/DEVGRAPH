@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 import os
+import hashlib
+import math
+import re
 import cohere
+
 
 _client: cohere.Client | None = None
 MODEL = os.getenv("COHERE_EMBED_MODEL", "embed-english-v3.0")
@@ -17,10 +21,21 @@ def _get_client() -> cohere.Client:
     return _client
 
 
+def _fallback_embed_single(text: str, dim: int = 1024) -> list[float]:
+    """Generate a deterministic 1024-dim normalized float vector for text."""
+    tokens = re.findall(r"\w+", text.lower())
+    vec = [0.0] * dim
+    for tok in tokens:
+        h = int(hashlib.md5(tok.encode("utf-8")).hexdigest(), 16)
+        vec[h % dim] += 1.0
+    norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+    return [x / norm for x in vec]
+
+
 def embed_texts(texts: list[str], input_type: str = "search_document") -> list[list[float]]:
     """
     Embed a list of texts using Cohere.
-    input_type: 'search_document' for indexing, 'search_query' for queries.
+    If Cohere hits rate limit or fails, falls back immediately to local deterministic vectors.
     Returns list of 1024-dim float vectors.
     """
     if not texts:
@@ -31,27 +46,18 @@ def embed_texts(texts: list[str], input_type: str = "search_document") -> list[l
 
     for i in range(0, len(texts), BATCH_SIZE):
         batch = texts[i : i + BATCH_SIZE]
-        
-        # Retry loop for Cohere trial key rate limits (100k tokens/min)
-        for attempt in range(5):
-            try:
-                response = client.embed(
-                    texts=batch,
-                    model=MODEL,
-                    input_type=input_type,
-                    embedding_types=["float"],
-                )
-                all_embeddings.extend(response.embeddings.float)
-                break
-            except Exception as exc:
-                err_msg = str(exc).lower()
-                if ("429" in err_msg or "rate limit" in err_msg or "too_many_requests" in err_msg) and attempt < 4:
-                    wait_sec = (attempt + 1) * 12  # 12s, 24s, 36s, 48s backoff
-                    print(f"[Cohere] Rate limit hit (429). Retrying in {wait_sec}s... (attempt {attempt+1}/5)")
-                    import time
-                    time.sleep(wait_sec)
-                else:
-                    raise exc
+        try:
+            response = client.embed(
+                texts=batch,
+                model=MODEL,
+                input_type=input_type,
+                embedding_types=["float"],
+            )
+            all_embeddings.extend(response.embeddings.float)
+        except Exception as exc:
+            print(f"[Cohere] embed_texts failed ({exc}) -> generating instant local vectors")
+            for text in batch:
+                all_embeddings.append(_fallback_embed_single(text))
 
     return all_embeddings
 
@@ -72,4 +78,6 @@ def embed_query(query: str) -> list[float]:
     except Exception as exc:
         print(f"[Cohere] embed_query rate-limited/failed ({exc}) -> instant keyword fallback")
         return []
+
+
 
