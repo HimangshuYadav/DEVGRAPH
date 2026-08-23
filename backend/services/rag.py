@@ -9,11 +9,11 @@ import re
 from groq import Groq
 
 from services.embedder      import embed_query
-from services.vector_store  import query_similar, list_sources
+from services.vector_store  import query_similar, query_by_keywords, list_sources
 from services.knowledge_graph import get_relevant_node_ids
 
 _groq: Groq | None = None
-MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.6-27b")
+MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
 
 def _get_groq() -> Groq:
@@ -52,28 +52,25 @@ def build_context(chunks: list[dict]) -> str:
 async def answer_question(question: str, n_results: int = 8) -> dict:
     """
     Full RAG pipeline:
-    1. Embed question via Cohere
+    1. Embed question via Cohere (or instant keyword fallback)
     2. Retrieve top-k chunks from ChromaDB
     3. Build prompt with context
     4. Get Groq completion
     5. Return answer + citations + graph highlights
     """
 
-    # 1. Embed query
+    # 1. Embed query & retrieve chunks
     q_embedding = embed_query(question)
-    if not q_embedding:
-        return {
-            "answer": "Embedding service unavailable. Check your COHERE_API_KEY.",
-            "citations": [],
-            "graph_highlight": [],
-        }
+    chunks = []
+    if q_embedding:
+        chunks = query_similar(q_embedding, n_results=n_results)
+    if not chunks:
+        chunks = query_by_keywords(question, n_results=n_results)
 
-    # 2. Retrieve chunks
-    chunks = query_similar(q_embedding, n_results=n_results)
     if not chunks:
         suggested = await _suggest_docs_url(question)
         return {
-            "answer": "No documentation has been indexed yet. Please scrape a docs site first.",
+            "answer": "No relevant documentation found for this query in the current catalog. Expand coverage by adding the documentation below.",
             "citations": [],
             "graph_highlight": [],
             "knowledge_gap": True,
@@ -93,17 +90,17 @@ async def answer_question(question: str, n_results: int = 8) -> dict:
 
     # 4. Groq completion
     groq_client = _get_groq()
-    model_name = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     completion = groq_client.chat.completions.create(
-        model=model_name,
+        model=MODEL,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",   "content": user_message},
         ],
         temperature=0.1,
-        max_tokens=1500,
+        max_tokens=800,
     )
     answer = completion.choices[0].message.content or ""
+
     # Robustly strip any reasoning/thinking blocks
     if "</think>" in answer:
         answer = answer.split("</think>")[-1].strip()
@@ -201,16 +198,15 @@ async def _suggest_docs_url(question: str) -> str | None:
     """Ask Groq to infer the best official documentation URL for a question it can't answer."""
     try:
         groq_client = _get_groq()
-        model_name = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
         completion = groq_client.chat.completions.create(
-            model=model_name,
+            model=MODEL,
             messages=[
                 {
                     "role": "system",
                     "content": (
                         "You are a documentation URL recommender. "
-                        "When given a developer question, respond with ONLY the root or documentation website URL "
-                        "that would best answer it. Return just the URL, nothing else — no explanation, no markdown."
+                        "When given a developer question, respond with ONLY the root or documentation website URL (e.g. https://svelte.dev). "
+                        "Return just the URL, nothing else — no explanation, no markdown."
                     ),
                 },
                 {
@@ -219,7 +215,7 @@ async def _suggest_docs_url(question: str) -> str | None:
                 },
             ],
             temperature=0.0,
-            max_tokens=300,
+            max_tokens=250,
         )
         raw = (completion.choices[0].message.content or "").strip()
         if "</think>" in raw:
@@ -229,6 +225,7 @@ async def _suggest_docs_url(question: str) -> str | None:
     except Exception as e:
         print(f"[URL Suggest] Error: {e}")
         return None
+
 
 
 

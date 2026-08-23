@@ -98,7 +98,52 @@ def query_similar(
     return sorted(chunks, key=lambda x: x["score"], reverse=True)
 
 
+def query_by_keywords(question: str, n_results: int = 8) -> list[dict]:
+    """Fast keyword search fallback when embedding API is rate limited."""
+    col = get_collection()
+    count = col.count()
+    if count == 0:
+        return []
+
+    import re
+    words = [w.lower() for w in re.findall(r"\b\w{3,}\b", question)]
+    if not words:
+        return []
+
+    sample = col.get(limit=min(count, 800), include=["documents", "metadatas"])
+    docs = sample.get("documents", [])
+    metas = sample.get("metadatas", [])
+    ids = sample.get("ids", [])
+
+    scored_chunks = []
+    for i, doc in enumerate(docs):
+        doc_lower = doc.lower()
+        meta = metas[i] if i < len(metas) and metas[i] else {}
+        heading_lower = meta.get("heading", "").lower()
+        title_lower = meta.get("title", "").lower()
+
+        text_hits = sum(1 for w in words if w in doc_lower)
+        heading_hits = sum(2 for w in words if w in heading_lower or w in title_lower)
+        matches = text_hits + heading_hits
+        if matches > 0:
+            score = matches / (max(len(words), 1) * 3)
+            scored_chunks.append({
+                "id": ids[i],
+                "text": doc,
+                "score": min(0.88, 0.45 + score * 0.45),
+                "page_url": meta.get("page_url", ""),
+                "title": meta.get("title", ""),
+                "heading": meta.get("heading", ""),
+                "excerpt": meta.get("excerpt", ""),
+                "chunk_idx": int(meta.get("chunk_idx", 0)),
+            })
+
+    scored_chunks.sort(key=lambda x: x["score"], reverse=True)
+    return scored_chunks[:n_results]
+
+
 def get_stats() -> dict:
+
     col = get_collection()
     count = col.count()
     # Get unique page URLs

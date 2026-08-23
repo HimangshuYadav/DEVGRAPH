@@ -57,6 +57,19 @@ def embed_texts(texts: list[str], input_type: str = "search_document") -> list[l
 
 
 def embed_query(query: str) -> list[float]:
-    """Embed a single query string."""
-    result = embed_texts([query], input_type="search_query")
-    return result[0] if result else []
+    """Embed a single query string without blocking retries."""
+    if not query:
+        return []
+    try:
+        client = _get_client()
+        response = client.embed(
+            texts=[query],
+            model=MODEL,
+            input_type="search_query",
+            embedding_types=["float"],
+        )
+        return response.embeddings.float[0]
+    except Exception as exc:
+        print(f"[Cohere] embed_query rate-limited/failed ({exc}) -> instant keyword fallback")
+        return []
+
