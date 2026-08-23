@@ -1,6 +1,6 @@
-# Antigravity — Frontend Application 💻
+# DevGraph AI — Frontend Application 💻
 
-This is the Next.js frontend for **Antigravity (DevGraph AI)** — an automated Docs→RAG & Knowledge Graph Platform.
+This is the Next.js frontend for **DevGraph AI** — an automated Docs→RAG & Knowledge Graph Platform.
 
 ---
 

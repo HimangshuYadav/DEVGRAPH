@@ -1,6 +1,6 @@
-# Antigravity 🚀
+# DevGraph AI 🚀
 
-> **DevGraph AI — Automated Docs→RAG & Knowledge Graph Platform**  
+> **Automated Docs→RAG & Knowledge Graph Platform**  
 > Powered by **Bright Data · Cohere Embeddings · ChromaDB · Groq LLM · NetworkX · Next.js**
 
 ---
@@ -17,7 +17,7 @@
 
 ## 🌟 What It Does
 
-Antigravity transforms any technical documentation website into a high-performance **RAG system** with an interactive **Knowledge Graph** and **Self-Healing Web Scrapers**.
+DevGraph AI transforms any technical documentation website into a high-performance **RAG system** with an interactive **Knowledge Graph** and **Self-Healing Web Scrapers**.
 
 1. **Scrape & Discover**: Automatically crawl documentation sites via Bright Data Web Unlocker / Scraper Studio with intelligent sitemap & link navigation.
 2. **Parse & Structure**: Extract page sections, subheadings, and code snippets into clean structured JSON schemas.
