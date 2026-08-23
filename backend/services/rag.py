@@ -88,18 +88,27 @@ async def answer_question(question: str, n_results: int = 8) -> dict:
     context = build_context(chunks)
     user_message = f"Documentation excerpts:\n\n{context}\n\nQuestion: {question}"
 
-    # 4. Groq completion
-    groq_client = _get_groq()
-    completion = groq_client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": user_message},
-        ],
-        temperature=0.1,
-        max_tokens=800,
-    )
-    answer = completion.choices[0].message.content or ""
+    # 4. Groq completion (with robust error fallback for Railway)
+    answer = ""
+    try:
+        groq_client = _get_groq()
+        completion = groq_client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user",   "content": user_message},
+            ],
+            temperature=0.1,
+            max_tokens=800,
+        )
+        answer = completion.choices[0].message.content or ""
+    except Exception as exc:
+        print(f"[Groq] Completion error ({exc}) -> generating direct context response")
+        excerpts_formatted = []
+        for c in chunks[:3]:
+            excerpts_formatted.append(f"#### [{c['heading']}]({c['page_url']})\n{c['text']}")
+        answer = "### Documentation Excerpts\n\n" + "\n\n".join(excerpts_formatted)
+
 
     # Robustly strip any reasoning/thinking blocks
     if "</think>" in answer:
